@@ -24,6 +24,25 @@ char charFrom6BitGroup(unsigned char bits){
     return arr[bits];
 }
 
+int decode(unsigned char* out, char* chars, int length){
+    int fullGroups = length / 4;
+    for(int i = 0; i < fullGroups; i++){
+        unsigned char bitGroups[4] = {0};
+        for(int j = 0; j < 4; j++){
+            bitGroups[j] = bitGroupFromChar(chars[i*4 + j]);
+            if(bitGroups[j] == 0) printf("WTF!\n");
+        }
+
+        out[i*3 + 0] = ((bitGroups[0] << 2) & 0xFC) | ((bitGroups[1] >> 4) & 0x03);
+        out[i*3 + 1] = ((bitGroups[1] << 4) & 0xF0) | ((bitGroups[2] >> 2) & 0x0F);
+        out[i*3 + 2] = ((bitGroups[2] << 6) & 0xC0) | ((bitGroups[3]) & 0x3F);
+    }
+
+    if(length) return 0;
+
+    return 0;
+}
+
 int encode(char* out, unsigned char* bytes, int length){
 
     int fullGroups = length / 3;
@@ -82,7 +101,7 @@ int test(){
         }
     }
 
-    if(1){
+    if(0){
         char encoded[5] = {0};
         unsigned char toEncode[] = "123";
 
@@ -105,6 +124,13 @@ int test(){
         unsigned char toEncode5[] = "Hello, World! It is a lovely day to day; would you say so..?";
         encode(encoded2, toEncode5, sizeof(toEncode5)-1);
         printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'.\n", encoded2);
+    }
+    if(1){
+        char encoded[] = "YWJj";
+        unsigned char decoded[4] = {0};
+
+        decode(decoded, encoded, 4);
+        printf("decoded 'YWJj' to '%s', should be 'abc'.\n", decoded);
     }
 
     return bad;
