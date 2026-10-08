@@ -10,3 +10,6 @@ $(TARGET) : $(OFILES)
 
 .c :
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean :
+	rm $(OFILES)

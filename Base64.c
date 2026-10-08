@@ -2,7 +2,7 @@
 #include "Base64.h"
 
 unsigned char bitGroupFromChar(char encoded){
-    if(!(42 < encoded || encoded < 123)) return 0;
+    if(!(42 < encoded || encoded < 123)) return 255;
     unsigned char c = encoded;
     
     // uppercase letters
@@ -14,8 +14,9 @@ unsigned char bitGroupFromChar(char encoded){
     // extra
     if(c == '+') return 62; // '+'
     if(c == '/') return 63; // '/'
+    if(c == '=') return -2;
 
-    return 0;
+    return 255;
 }
 
 char charFrom6BitGroup(unsigned char bits){
@@ -24,23 +25,118 @@ char charFrom6BitGroup(unsigned char bits){
     return arr[bits];
 }
 
-int decode(unsigned char* out, char* chars, int length){
-    int fullGroups = length / 4;
-    for(int i = 0; i < fullGroups; i++){
-        unsigned char bitGroups[4] = {0};
+int encodedStringLength(unsigned long long* outLength, char* chars, unsigned long long length){
+    if(outLength == NULL) return 1;
+    unsigned long long runningLength = 0;
+    for(unsigned long long i = 0; i < length; i++){
+        if(bitGroupFromChar(chars[i]) < 64) runningLength++;
+    }
+    *outLength = runningLength;
+    return 0;
+}
+
+int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int automaticPadding, int enforeAcceptedAlphabet){
+    unsigned long long stringLength = 0;
+    if(encodedStringLength(&stringLength, chars, length)){
+        printf("Finding string length failed for some reason...\n");
+        return 1;
+    }
+    unsigned long long fullGroups = stringLength / 4;
+
+    int isPadding = 0;
+    if(!automaticPadding){
+        if(chars[length-1] == '=') isPadding = 1;
+        if(isPadding && chars[length-2] == '=') isPadding = 2;
+
+        if(isPadding) fullGroups -= 1;
+    }
+    
+
+    if(fullGroups * 4 != length) {
+        if(!automaticPadding){
+            printf("Base 64 decoding failed! Padding is wrong! Not a multible of 4.\n");
+            return 1;
+        }   
+    }
+
+    unsigned long long charsRead = 0;
+
+    printf("fullGroup: %lld, stringLen: %lld\n",fullGroups, stringLength);
+
+    unsigned char bitGroups[4] = {0};
+    unsigned long long readOffset = 0;
+    for(unsigned long long i = 0; i < fullGroups; i++){
         for(int j = 0; j < 4; j++){
-            bitGroups[j] = bitGroupFromChar(chars[i*4 + j]);
-            if(bitGroups[j] == 0) printf("WTF!\n");
+            bitGroups[j] = bitGroupFromChar(chars[i*4 + j + readOffset]);
+            if(bitGroups[j] == 255) {
+                if(enforeAcceptedAlphabet) {
+                    printf("Base64 decoding failed! Char not in alphabet!\n");
+                    return 1;
+                }
+                j--;
+                readOffset++;
+            }
         }
+        charsRead += 4;
 
         out[i*3 + 0] = ((bitGroups[0] << 2) & 0xFC) | ((bitGroups[1] >> 4) & 0x03);
         out[i*3 + 1] = ((bitGroups[1] << 4) & 0xF0) | ((bitGroups[2] >> 2) & 0x0F);
         out[i*3 + 2] = ((bitGroups[2] << 6) & 0xC0) | ((bitGroups[3]) & 0x3F);
     }
+    if(charsRead != stringLength){
+        if(charsRead > stringLength){
+            printf("Read more chars than in the base64 string. shouldn't be possible.\n");
+            return 1;
+        }
+        int difRead = stringLength - charsRead; 
+        if(difRead != 2 && difRead != 3){
+            printf("Read %d chars under the string length. This shouldn't happen. charsRead: %lld, stringLength: %lld, fullGroups: %lld\n", difRead, charsRead, stringLength, fullGroups);
+            return 1;
+        }
+        if(difRead == 2) isPadding = 2;
+        if(difRead == 3) isPadding = 1;
+    }
 
-    if(length) return 0;
+    if(isPadding){
+        if(isPadding == 2){
+            for(int i = 0; i < 2; i++){
+                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset]);
+                if(bitGroups[i] == 255) {
+                    if(enforeAcceptedAlphabet) {
+                        printf("Base64 decoding failed! Char not in alphabet!\n");
+                        return 1;
+                    }
+                    i--;
+                    readOffset++;
+                }
+            }
+            
+            out[fullGroups*3 + 0] = ((bitGroups[0] << 2) & 0xFC) | ((bitGroups[1] >> 4) & 0x03);
+        } else if(isPadding == 1){
+            for(int i = 0; i < 3; i++){
+                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset]);
+                if(bitGroups[i] == 255) {
+                    if(enforeAcceptedAlphabet) {
+                        printf("Base64 decoding failed! Char not in alphabet!\n");
+                        return 1;
+                    }
+                    i--;
+                    readOffset++;
+                }
+            }
 
+            out[fullGroups*3 + 0] = ((bitGroups[0] << 2) & 0xFC) | ((bitGroups[1] >> 4) & 0x03);
+            out[fullGroups*3 + 1] = ((bitGroups[1] << 4) & 0xF0) | ((bitGroups[2] >> 2) & 0x0F);
+        }
+    }
     return 0;
+}
+
+int decodeStrict(unsigned char* out, char* chars, unsigned long long length){
+    return decodeSmart(out, chars, length, 0, 1);
+}
+int decode(unsigned char* out, char* chars, unsigned long long length){
+    return decodeSmart(out, chars, length, 1, 0);
 }
 
 int encode(char* out, unsigned char* bytes, int length){
@@ -126,11 +222,25 @@ int test(){
         printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'.\n", encoded2);
     }
     if(1){
-        char encoded[] = "YWJj";
-        unsigned char decoded[4] = {0};
+        char encoded1[] = "YWJj";
+        unsigned char decoded1[4] = {0};
+        decode(decoded1, encoded1, 4);
+        printf("decoded 'YWJj' to '%s', should be 'abc'.\n", decoded1);
 
-        decode(decoded, encoded, 4);
-        printf("decoded 'YWJj' to '%s', should be 'abc'.\n", decoded);
+        char encoded2[] = "YWJjYW==";
+        unsigned char decoded2[5] = {0};
+        decode(decoded2, encoded2, sizeof(encoded2)-1);
+        printf("decoded 'YWJjYW==' to '%s', should be 'abca'.\n", decoded2);
+
+        char encoded3[] = "YWJjYWJ=";
+        unsigned char decoded3[6] = {0};
+        decode(decoded3, encoded3, sizeof(encoded3)-1);
+        printf("decoded 'YWJjYWJ=' to '%s', should be 'abcab'.\n", decoded3);
+
+        char encoded4[] = "Y - - - - - - W - -- - -- - - ,. , ., .J   j,.,.,-,.,.,-()Y  W J=";
+        unsigned char decoded4[6] = {0};
+        decode(decoded4, encoded4, sizeof(encoded4)-1);
+        printf("decoded '%s' to '%s', should be 'abcab'.\n", encoded4, decoded4);
     }
 
     return bad;
