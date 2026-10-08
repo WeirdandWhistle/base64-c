@@ -61,7 +61,7 @@ int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int 
 
     unsigned long long charsRead = 0;
 
-    printf("fullGroup: %lld, stringLen: %lld\n",fullGroups, stringLength);
+    // printf("fullGroup: %lld, stringLen: %lld\n",fullGroups, stringLength);
 
     unsigned char bitGroups[4] = {0};
     unsigned long long readOffset = 0;
@@ -182,6 +182,8 @@ int encode(char* out, unsigned char* bytes, int length){
 }
 
 int test(){
+    printf("======================\n");
+    printf("Nothing should return here (if it does smth wrong):\n");
     int bad = 0;
     for(int i = 0; i < 64; i++){
         char firstC = charFrom6BitGroup(i);
@@ -197,7 +199,8 @@ int test(){
         }
     }
 
-    if(0){
+    if(1){
+        printf("======================\n");
         char encoded[5] = {0};
         unsigned char toEncode[] = "123";
 
@@ -219,9 +222,11 @@ int test(){
         char encoded2[100] = {0};
         unsigned char toEncode5[] = "Hello, World! It is a lovely day to day; would you say so..?";
         encode(encoded2, toEncode5, sizeof(toEncode5)-1);
-        printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'.\n", encoded2);
+        printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'\n", encoded2);
     }
     if(1){
+        printf("======================\n");
+
         char encoded1[] = "YWJj";
         unsigned char decoded1[4] = {0};
         decode(decoded1, encoded1, 4);
@@ -241,7 +246,14 @@ int test(){
         unsigned char decoded4[6] = {0};
         decode(decoded4, encoded4, sizeof(encoded4)-1);
         printf("decoded '%s' to '%s', should be 'abcab'.\n", encoded4, decoded4);
+
+        char encoded5[] = "IQ";
+        unsigned char decoded5[6] = {0};
+        decode(decoded5, encoded5, sizeof(encoded5)-1);
+        printf("decoded '%s' to '%s', should be '!'.\n", encoded5, decoded5);
     }
+
+    printf("======================\n");
 
     return bad;
 }

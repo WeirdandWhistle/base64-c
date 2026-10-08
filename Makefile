@@ -13,3 +13,6 @@ $(TARGET) : $(OFILES)
 
 clean :
 	rm $(OFILES)
+
+test: $(TARGET)
+	./$(TARGET) test
