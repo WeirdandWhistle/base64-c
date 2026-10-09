@@ -9,7 +9,7 @@ int main(int argc, char* argv[]){
         if(strcmp(argv[i], "test") == 0) doTest = 1;
     }
 
-    if(doTest) test();
+    if(doTest) return test();
 
     return 0;
 }
