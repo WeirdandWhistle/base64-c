@@ -11,7 +11,7 @@ void print_hex(unsigned char* in, unsigned long long len){
     printf("\n");
 }
 
-unsigned char bitGroupFromChar(char encoded){
+unsigned char bitGroupFromChar(char encoded, int varient){
     if(!(42 < encoded || encoded < 123)) return 255;
     unsigned char c = encoded;
     
@@ -22,16 +22,34 @@ unsigned char bitGroupFromChar(char encoded){
     // numbers
     if(47 < c && c < 58) return (c - 48) + 52;
     // extra
-    if(c == '+') return 62; // '+'
-    if(c == '/') return 63; // '/'
+    if(varient == VARIENT_BASE64_NORMAL || varient == VARIENT_BASE64_EITHER){
+        if(c == '+') return 62; // '+'
+        if(c == '/') return 63; // '/'
+    } else if(varient == VARIENT_BASE64_URL){
+        if(c == '-') return 62;
+        if(c == '_') return 63;
+    } else {
+        printf("unknown base64 varient\n");
+    }
+    
     if(c == '=') return -2;
 
     return 255;
 }
 
-char charFrom6BitGroup(unsigned char bits){
-    static char arr[64] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
+char charFrom6BitGroup(unsigned char bits, int varient){
+    static char arr[62] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
     if(bits > 63) return 0;
+    if(varient == VARIENT_BASE64_NORMAL || varient == VARIENT_BASE64_EITHER){
+        if(bits == 62) return '+';
+        if(bits == 63) return '/';
+    } else if(varient == VARIENT_BASE64_URL){
+        if(bits == 62) return '-';
+        if(bits == 63) return '_';
+    } else {
+        printf("unknown base64 varient\n");
+    }
+    
     return arr[bits];
 }
 
@@ -52,7 +70,7 @@ int encodedStringLength(unsigned long long* outLength, char* chars, unsigned lon
     if(outLength == NULL) return 1;
     unsigned long long runningLength = 0;
     for(unsigned long long i = 0; i < length; i++){
-        if(bitGroupFromChar(chars[i]) < 64) runningLength++;
+        if(bitGroupFromChar(chars[i], VARIENT_BASE64_EITHER) < 64) runningLength++;
     }
     *outLength = runningLength;
     return 0;
@@ -74,7 +92,7 @@ int get_bin_length_from_base64(unsigned long long* bin_length, char* base64, uns
     return 0;
 }
 
-int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int automaticPadding, int enforeAcceptedAlphabet, int logging){
+int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int automaticPadding, int enforeAcceptedAlphabet, int logging, int varient){
     unsigned long long stringLength = 0;
     if(encodedStringLength(&stringLength, chars, length)){
         if(logging) printf("Finding string length failed for some reason...\n");
@@ -106,7 +124,7 @@ int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int 
     unsigned long long readOffset = 0;
     for(unsigned long long i = 0; i < fullGroups; i++){
         for(int j = 0; j < 4; j++){
-            bitGroups[j] = bitGroupFromChar(chars[i*4 + j + readOffset]);
+            bitGroups[j] = bitGroupFromChar(chars[i*4 + j + readOffset], varient);
             if(bitGroups[j] == 255) {
                 if(enforeAcceptedAlphabet) {
                     if(logging) printf("Base64 decoding failed! Char not in alphabet!\n");
@@ -139,7 +157,7 @@ int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int 
     if(isPadding){
         if(isPadding == 2){
             for(int i = 0; i < 2; i++){
-                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset]);
+                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset], varient);
                 if(bitGroups[i] == 255) {
                     if(enforeAcceptedAlphabet) {
                         if(logging) printf("Base64 decoding failed! Char not in alphabet!\n");
@@ -153,7 +171,7 @@ int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int 
             out[fullGroups*3 + 0] = ((bitGroups[0] << 2) & 0xFC) | ((bitGroups[1] >> 4) & 0x03);
         } else if(isPadding == 1){
             for(int i = 0; i < 3; i++){
-                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset]);
+                bitGroups[i] = bitGroupFromChar(chars[fullGroups*4 + i + readOffset], varient);
                 if(bitGroups[i] == 255) {
                     if(enforeAcceptedAlphabet) {
                         if(logging) printf("Base64 decoding failed! Char not in alphabet!\n");
@@ -171,11 +189,11 @@ int decodeSmart(unsigned char* out, char* chars, unsigned long long length, int 
     return 0;
 }
 
-int base642bin(unsigned char* bin, char* base64, unsigned long long base64_length){
-    return decodeSmart(bin, base64, base64_length, 1, 0, 0);
+int base642bin(unsigned char* bin, char* base64, unsigned long long base64_length, int varient){
+    return decodeSmart(bin, base64, base64_length, 1, 0, 0, varient);
 }
 
-int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding){
+int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding, int varient){
 
     int fullGroups = bin_length / 3;
 
@@ -188,7 +206,7 @@ int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding){
         bitsGroup[3] = (bin[i*3 + 2]) & 0x3F;
 
         for(int j = 0; j < 4; j++){
-            base64[i*4 + j] = charFrom6BitGroup(bitsGroup[j]);
+            base64[i*4 + j] = charFrom6BitGroup(bitsGroup[j], varient);
         }
     }
     // 1 of 3 cases:
@@ -200,17 +218,17 @@ int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding){
     if(extraBytes == 0){
 
     } else if(extraBytes == 1){
-        base64[fullGroups*4 + 0] = charFrom6BitGroup((bin[bin_length - 1] >> 2) & 0x3F);
-        base64[fullGroups*4 + 1] = charFrom6BitGroup(((bin[bin_length - 1] << 4)) & 0x3F);
+        base64[fullGroups*4 + 0] = charFrom6BitGroup((bin[bin_length - 1] >> 2) & 0x3F, varient);
+        base64[fullGroups*4 + 1] = charFrom6BitGroup(((bin[bin_length - 1] << 4)) & 0x3F, varient);
         if(doPadding){
             base64[fullGroups*4 + 2] = '=';
             base64[fullGroups*4 + 3] = '=';
         }
         
     } else if(extraBytes == 2){
-        base64[fullGroups*4 + 0] = charFrom6BitGroup((bin[bin_length - 2] >> 2) & 0x3F);
-        base64[fullGroups*4 + 1] = charFrom6BitGroup(((bin[bin_length - 2] << 4) | (bin[bin_length - 1] >> 4)) & 0x3F);
-        base64[fullGroups*4 + 2] = charFrom6BitGroup(((bin[bin_length - 1] << 2)) & 0x3F);
+        base64[fullGroups*4 + 0] = charFrom6BitGroup((bin[bin_length - 2] >> 2) & 0x3F, varient);
+        base64[fullGroups*4 + 1] = charFrom6BitGroup(((bin[bin_length - 2] << 4) | (bin[bin_length - 1] >> 4)) & 0x3F, varient);
+        base64[fullGroups*4 + 2] = charFrom6BitGroup(((bin[bin_length - 1] << 2)) & 0x3F, varient);
         if(doPadding){
             base64[fullGroups*4 + 3] = '=';
         }
@@ -227,13 +245,13 @@ int test(){
     printf("Nothing should return here (if it does smth wrong):\n");
     int bad = 0;
     for(int i = 0; i < 64; i++){
-        char firstC = charFrom6BitGroup(i);
+        char firstC = charFrom6BitGroup(i, VARIENT_BASE64_NORMAL);
         if(firstC == 0) {
             printf("Problem on index %d = %c\n", i, firstC);
             bad = 1;
         }
 
-        unsigned char bits = bitGroupFromChar(firstC);
+        unsigned char bits = bitGroupFromChar(firstC, VARIENT_BASE64_NORMAL);
         if(bits != i) {
             bad = 1;
             printf("Problem on index %d; %c => %d\n", i, firstC, bits);
@@ -245,25 +263,25 @@ int test(){
         char encoded[5] = {0};
         unsigned char toEncode[] = "123";
 
-        bin2base64(encoded, toEncode, 3, 1);
+        bin2base64(encoded, toEncode, 3, 1, VARIENT_BASE64_NORMAL);
         printf("'123' encoded as '%s' should be 'MITz'.\n", encoded);
         
         unsigned char toEncode2[] = "abc";
-        bin2base64(encoded, toEncode2, 3, 1);
+        bin2base64(encoded, toEncode2, 3, 1, VARIENT_BASE64_NORMAL);
         printf("'abc' encoded as '%s' should be 'YWJj'.\n", encoded);
 
         unsigned char toEncode3[] = "xy";
-        bin2base64(encoded, toEncode3, 2, 1);
+        bin2base64(encoded, toEncode3, 2, 1, VARIENT_BASE64_NORMAL);
         printf("'xy'  encoded as '%s' should be 'eHK='.\n", encoded);
 
         memset(encoded, 0, sizeof(encoded));
         unsigned char toEncode4[] = "!";
-        bin2base64(encoded, toEncode4, 1, 0);
+        bin2base64(encoded, toEncode4, 1, 0, VARIENT_BASE64_NORMAL);
         printf("'!'   encoded as '%s' should be 'IQ'. (padding is turned off)\n", encoded);
 
         char encoded2[100] = {0};
         unsigned char toEncode5[] = "Hello, World! It is a lovely day to day; would you say so..?";
-        bin2base64(encoded2, toEncode5, sizeof(toEncode5)-1, 1);
+        bin2base64(encoded2, toEncode5, sizeof(toEncode5)-1, 1, VARIENT_BASE64_NORMAL);
         printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'\n", encoded2);
     }
     if(1){
@@ -271,32 +289,32 @@ int test(){
 
         char encoded1[] = "YWJj";
         unsigned char decoded1[4] = {0};
-        base642bin(decoded1, encoded1, 4);
+        base642bin(decoded1, encoded1, 4, VARIENT_BASE64_NORMAL);
         printf("decoded 'YWJj' to '%s', should be 'abc'.\n", decoded1);
 
         char encoded2[] = "YWJjYW==";
         unsigned char decoded2[5] = {0};
-        base642bin(decoded2, encoded2, sizeof(encoded2)-1);
+        base642bin(decoded2, encoded2, sizeof(encoded2)-1, VARIENT_BASE64_NORMAL);
         printf("decoded 'YWJjYW==' to '%s', should be 'abca'.\n", decoded2);
 
         char encoded3[] = "YWJjYWJ=";
         unsigned char decoded3[6] = {0};
-        base642bin(decoded3, encoded3, sizeof(encoded3)-1);
+        base642bin(decoded3, encoded3, sizeof(encoded3)-1, VARIENT_BASE64_NORMAL);
         printf("decoded 'YWJjYWJ=' to '%s', should be 'abcab'.\n", decoded3);
 
         char encoded4[] = "Y - - - - - - W - -- - -- - - ,. , ., .J   j,.,.,-,.,.,-()Y  W J=";
         unsigned char decoded4[6] = {0};
-        base642bin(decoded4, encoded4, sizeof(encoded4)-1);
+        base642bin(decoded4, encoded4, sizeof(encoded4)-1, VARIENT_BASE64_NORMAL);
         printf("decoded '%s' to '%s', should be 'abcab'.\n", encoded4, decoded4);
 
         char encoded5[] = "IQ";
         unsigned char decoded5[6] = {0};
-        base642bin(decoded5, encoded5, sizeof(encoded5)-1);
+        base642bin(decoded5, encoded5, sizeof(encoded5)-1, VARIENT_BASE64_NORMAL);
         printf("decoded '%s' to '%s', should be '!'.\n", encoded5, decoded5);
 
         char encoded6[] = "I";
         unsigned char decoded6[6] = {0};
-        base642bin(decoded6, encoded6, sizeof(encoded6)-1);
+        base642bin(decoded6, encoded6, sizeof(encoded6)-1, VARIENT_BASE64_NORMAL);
         printf("decoded '%s' to '%s', should be ''.\n", encoded6, decoded6);
     }
     if(1){ // automated random testing
@@ -320,7 +338,7 @@ int test(){
         }
 
         // generate char arr (aka encode data)
-        bin2base64(charArr, arr, length, 1);
+        bin2base64(charArr, arr, length, 1, VARIENT_BASE64_NORMAL);
 
         // printf("decoding data in question: %s\n", charArr);
 
@@ -334,7 +352,7 @@ int test(){
         unsigned char* arrCheck = malloc(arrCheckLength);
         if(arrCheck == NULL) goto exit_if;
 
-        base642bin(arrCheck, charArr, charArrLength);
+        base642bin(arrCheck, charArr, charArrLength, VARIENT_BASE64_NORMAL);
 
         // make sure its the same
         int good = 1;

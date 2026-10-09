@@ -1,11 +1,16 @@
 #ifndef BASE_64_HEADER
 #define BASE_64_HEADER
 
-    char charFrom6BitGroup(unsigned char bits);
-    unsigned char bitGroupFromChar(char encoded);
+    #define VARIENT_BASE64_NORMAL 0
+    #define VARIENT_BASE64_EITHER -1
+    #define VARIENT_BASE64_URL 1
+    #define VARIENT_BASE64_FILESAFE 1
+
+    // char charFrom6BitGroup(unsigned char bits);
+    // unsigned char bitGroupFromChar(char encoded);
     
-    int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding);
-    int base642bin(unsigned char* bin, char* base64, unsigned long long base64_length);
+    int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding, int varient);
+    int base642bin(unsigned char* bin, char* base64, unsigned long long base64_length, int varient);
 
 
     // int decodeStrict(unsigned char* out, char* bytes, unsigned long long length);
