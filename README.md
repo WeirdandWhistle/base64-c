@@ -31,10 +31,12 @@ for the argument `int varient` found in both the encode and decode functions you
 
 Remember to include the header file to use the functions `#include "Base64.h"`
 
+> The decoder is pretty good. It will handle most things you throw at it and throw away anything that doesn't belong.
+
 # Demo the code:
 ```bash
-git clone https://github.com/WeirdandWhistle/base64-c.git --depth 1 \
-cd base64-c \
-make \
+git clone https://github.com/WeirdandWhistle/base64-c.git --depth 1
+cd base64-c 
+make 
 ./main test
 ```
