@@ -12,7 +12,7 @@ $(TARGET) : $(OFILES)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean :
-	rm $(OFILES)
+	rm $(OFILES) $(TARGET)
 
 test: $(TARGET)
 	./$(TARGET) test
