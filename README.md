@@ -30,3 +30,11 @@ for the argument `int varient` found in both the encode and decode functions you
 > all reference in docs (and code) to strings **DO NOT** inlcude a trailing `NULL` byte. They are ASCII strings NOT C string.
 
 Remember to include the header file to use the functions `#include "Base64.h"`
+
+# Demo the code:
+```bash
+git clone https://github.com/WeirdandWhistle/base64-c.git --depth 1 \
+cd base64-c \
+make \
+./main test
+```
