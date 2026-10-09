@@ -4,13 +4,6 @@
 #include <string.h>
 #include "Base64.h"
 
-void print_hex(unsigned char* in, unsigned long long len){
-    for(unsigned long long i = 0; i < len; i++){
-        printf("%02x ", in[i]);
-    }
-    printf("\n");
-}
-
 unsigned char bitGroupFromChar(char encoded, int varient){
     if(!(42 < encoded || encoded < 123)) return 255;
     unsigned char c = encoded;
@@ -193,7 +186,7 @@ int base642bin(unsigned char* bin, char* base64, unsigned long long base64_lengt
     return decodeSmart(bin, base64, base64_length, 1, 0, 0, varient);
 }
 
-int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding, int varient){
+int bin2base64(char* base64, unsigned char* bin, unsigned long long bin_length, int doPadding, int varient){
 
     int fullGroups = bin_length / 3;
 

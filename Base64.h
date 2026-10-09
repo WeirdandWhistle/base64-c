@@ -9,7 +9,7 @@
     // char charFrom6BitGroup(unsigned char bits);
     // unsigned char bitGroupFromChar(char encoded);
     
-    int bin2base64(char* base64, unsigned char* bin, int bin_length, int doPadding, int varient);
+    int bin2base64(char* base64, unsigned char* bin, unsigned long long bin_length, int doPadding, int varient);
     int base642bin(unsigned char* bin, char* base64, unsigned long long base64_length, int varient);
 
 
