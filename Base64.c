@@ -257,24 +257,30 @@ int test(){
         unsigned char toEncode[] = "123";
 
         bin2base64(encoded, toEncode, 3, 1, VARIENT_BASE64_NORMAL);
-        printf("'123' encoded as '%s' should be 'MITz'.\n", encoded);
+        if(strcmp("MTIz", encoded)) bad = 1;
+        // printf("#1: %d\n", strcmp("MTIz", encoded));
+        printf("'123' encoded as '%s' should be 'MTIz'.\n", encoded);
         
         unsigned char toEncode2[] = "abc";
         bin2base64(encoded, toEncode2, 3, 1, VARIENT_BASE64_NORMAL);
+        if(strcmp("YWJj", encoded)) bad = 2;
         printf("'abc' encoded as '%s' should be 'YWJj'.\n", encoded);
 
         unsigned char toEncode3[] = "xy";
         bin2base64(encoded, toEncode3, 2, 1, VARIENT_BASE64_NORMAL);
-        printf("'xy'  encoded as '%s' should be 'eHK='.\n", encoded);
+        if(strcmp("eHk=", encoded)) bad = 3;
+        printf("'xy'  encoded as '%s' should be 'eHk='.\n", encoded);
 
         memset(encoded, 0, sizeof(encoded));
         unsigned char toEncode4[] = "!";
         bin2base64(encoded, toEncode4, 1, 0, VARIENT_BASE64_NORMAL);
+        if(strcmp("IQ", encoded)) bad = 4;
         printf("'!'   encoded as '%s' should be 'IQ'. (padding is turned off)\n", encoded);
 
         char encoded2[100] = {0};
         unsigned char toEncode5[] = "Hello, World! It is a lovely day to day; would you say so..?";
         bin2base64(encoded2, toEncode5, sizeof(toEncode5)-1, 1, VARIENT_BASE64_NORMAL);
+        if(strcmp("SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/", encoded2)) bad = 11;
         printf("      encoded as '%s' should be 'SGVsbG8sIFdvcmxkISBJdCBpcyBhIGxvdmVseSBkYXkgdG8gZGF5OyB3b3VsZCB5b3Ugc2F5IHNvLi4/'\n", encoded2);
     }
     if(1){
@@ -283,31 +289,37 @@ int test(){
         char encoded1[] = "YWJj";
         unsigned char decoded1[4] = {0};
         base642bin(decoded1, encoded1, 4, VARIENT_BASE64_NORMAL);
+        if(memcmp("abc", decoded1, 3)) bad = 5;
         printf("decoded 'YWJj' to '%s', should be 'abc'.\n", decoded1);
 
         char encoded2[] = "YWJjYW==";
         unsigned char decoded2[5] = {0};
         base642bin(decoded2, encoded2, sizeof(encoded2)-1, VARIENT_BASE64_NORMAL);
+        if(memcmp("abca", decoded2, 4)) bad = 6;
         printf("decoded 'YWJjYW==' to '%s', should be 'abca'.\n", decoded2);
 
         char encoded3[] = "YWJjYWJ=";
         unsigned char decoded3[6] = {0};
         base642bin(decoded3, encoded3, sizeof(encoded3)-1, VARIENT_BASE64_NORMAL);
+        if(memcmp("abcab", decoded3, 5)) bad = 7;
         printf("decoded 'YWJjYWJ=' to '%s', should be 'abcab'.\n", decoded3);
 
         char encoded4[] = "Y - - - - - - W - -- - -- - - ,. , ., .J   j,.,.,-,.,.,-()Y  W J=";
         unsigned char decoded4[6] = {0};
         base642bin(decoded4, encoded4, sizeof(encoded4)-1, VARIENT_BASE64_NORMAL);
+        if(memcmp("abcab", decoded4, 5)) bad = 8;
         printf("decoded '%s' to '%s', should be 'abcab'.\n", encoded4, decoded4);
 
         char encoded5[] = "IQ";
         unsigned char decoded5[6] = {0};
         base642bin(decoded5, encoded5, sizeof(encoded5)-1, VARIENT_BASE64_NORMAL);
+        if(memcmp("!", decoded5, 1)) bad = 9;
         printf("decoded '%s' to '%s', should be '!'.\n", encoded5, decoded5);
 
         char encoded6[] = "I";
         unsigned char decoded6[6] = {0};
         base642bin(decoded6, encoded6, sizeof(encoded6)-1, VARIENT_BASE64_NORMAL);
+        if(memcmp("", decoded6, 1)) bad = 10;
         printf("decoded '%s' to '%s', should be ''.\n", encoded6, decoded6);
     }
     if(1){ // automated random testing
@@ -360,7 +372,10 @@ int test(){
         // printf("Dumping start: "); print_hex(arr, length);
         // printf("Dumping end  : "); print_hex(arrCheck, arrCheckLength);
 
-        if(!good) printf("Not good! Automated random encoder/decoder test failed.\n");
+        if(!good) {
+            printf("Not good! Automated random encoder/decoder test failed.\n");
+            bad = 37;
+        }
         else printf("Good! Automated random encoder/decoder test worked.\n");
 
 
@@ -369,8 +384,14 @@ int test(){
         free(charArr);
 
     }
-
+    if(!bad){
+        printf("======================\n");
+        printf("Summary: All tests passed.\n");
+    }
+    else printf("Exit Code: %d\n", bad);
+    
     printf("======================\n");
+    
 
     return bad;
 }
